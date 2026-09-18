@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سهلة للتوصيل - لوحة التحكم</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;font-family:'Cairo',sans-serif}
+body{margin:0;background:#f8f8f8;padding-bottom:80px}
+.header{background:#ff6a00;color:white;padding:15px;border-radius:0 0 22px 22px;display:flex;align-items:center;justify-content:space-between}
+.header-left{display:flex;align-items:center;gap:10px}
+.ad{width:42px;height:42px;background:white;color:#ff6a00;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800}
+.h-title{font-size:22px;font-weight:800}
+.h-sub{background:#7a2e00;padding:6px 20px;border-radius:20px;margin-top:5px;font-size:13px;display:inline-block}
+.header-right{display:flex;gap:8px;align-items:center}
+.icon-btn{background:rgba(0,0,0,.15);border:none;width:40px;height:40px;border-radius:50%;color:white;font-size:20px;cursor:pointer}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px}
+.card{background:white;border-radius:16px;padding:15px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.card b{font-size:26px;display:block}
+.card:nth-child(1){background:#eaf4ff} .card:nth-child(2){background:#eafff0}
+.card:nth-child(3){background:#fbeaff} .card:nth-child(4){background:#fff6e0}
+.list-box{background:white;margin:12px;border-radius:18px;padding:12px}
+.list-header{display:flex;justify-content:space-between;align-items:center;font-weight:800}
+.search{width:100%;margin:10px 0;padding:12px;border-radius:20px;border:1px solid #eee;text-align:center}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:white;display:grid;grid-template-columns:repeat(4,1fr);height:65px;box-shadow:0 -2px 10px rgba(0,0,0,.06)}
+.nav-item{text-align:center;padding:8px 0;color:#999;text-decoration:none;font-size:11px;font-weight:700}
+.nav-item.active{color:#ff6a00}
+/* modal التوكن الجديد */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:999;padding:15px}
+.modal.show{display:flex}
+.modal-box{background:white;width:100%;max-width:360px;border-radius:18px;padding:20px}
+.modal-box input{width:100%;padding:12px;border:1.5px solid #ddd;border-radius:12px;direction:ltr;margin:10px 0}
+.btn{width:100%;padding:12px;border:none;border-radius:12px;font-weight:800;cursor:pointer;margin-top:8px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="ad">AD</div>
+    <div>
+      <div class="h-title">سهلة للتوصيل</div>
+      <div class="h-sub">لوحة التحكم</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="icon-btn" onclick="openTokenModal()">⚙️</button>
+    <button class="icon-btn">🔔</button>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="card"><div>📋</div><b id="totalOrders">0</b><small>طلب<br>إجمالي الطلبات</small></div>
+  <div class="card"><div>🟢</div><b id="totalBalance">0</b><small>جنيه<br>إجمالي الأرصدة</small></div>
+  <div class="card"><div>💜</div><b id="todayProfit">0</b><small>جنيه<br>أرباح اليوم</small></div>
+  <div class="card"><div>👤</div><b id="totalRiders">0</b><small>مندوب<br>إجمالي المندوبين</small></div>
+</div>
+
+<div class="list-box">
+  <div class="list-header">
+    <span>👥 قائمة المندوبين</span>
+    <small id="srcLabel" style="color:#888;font-size:10px">(localStorage)</small>
+  </div>
+  <input class="search" id="searchInput" placeholder="🔍 ابحث باسم المندوب أو رقم الهاتف ...">
+  <div id="ridersList" style="text-align:center;padding:20px;color:#888">مفيش مناديب - ضيف من riders.json</div>
+</div>
+
+<div class="bottom-nav">
+  <a class="nav-item active" href="#">🏠<br>الرئيسية</a>
+  <a class="nav-item" href="riders.html">👥<br>المندوبين</a>
+  <a class="nav-item" href="#">📋<br>الطلبات</a>
+  <a class="nav-item" href="#" onclick="openTokenModal();return false;">⚙️<br>الإعدادات</a>
+</div>
+
+<!-- مودال التوكن الجديد اللي طلبته -->
+<div class="modal" id="tokenModal">
+  <div class="modal-box">
+    <h3>⚙️ تغيير التوكن</h3>
+    <p style="font-size:12px;color:#666">التوكن الجديد هيتحفظ في المتصفح ده بس</p>
+    <input id="tokenInput" type="password" placeholder="ghp_xxxxxxxxxxxxxxxx">
+    <button class="btn" style="background:#ff6a00;color:white" onclick="saveToken()">حفظ التوكن الجديد</button>
+    <button class="btn" style="background:#eee" onclick="testToken()">اختبار التوكن</button>
+    <button class="btn" style="background:#ddd" onclick="closeTokenModal()">اغلاق</button>
+    <div id="tokenStatus" style="font-size:12px;margin-top:8px;text-align:center"></div>
+  </div>
+</div>
+
+<script>
+const OWNER="wwweslamtarek567-netizen";
+const REPO="sahlah";
+const FILE_PATH="riders.json";
+
+function getToken(){ return localStorage.getItem('gh_token') || localStorage.getItem('github_token') || ""; }
+function openTokenModal(){
+  document.getElementById('tokenInput').value=getToken();
+  document.getElementById('tokenStatus').innerText=getToken()? 'يوجد توكن محفوظ ✓' : 'مفيش توكن';
+  document.getElementById('tokenModal').classList.add('show');
+}
+function closeTokenModal(){ document.getElementById('tokenModal').classList.remove('show'); }
+function saveToken(){
+  const t=document.getElementById('tokenInput').value.trim();
+  if(!t) return alert('اكتب التوكن');
+  localStorage.setItem('gh_token', t);
+  localStorage.setItem('github_token', t);
+  document.getElementById('tokenStatus').innerText='تم حفظ التوكن ✓';
+  setTimeout(()=>{ closeTokenModal(); loadRiders(); },800);
+}
+async function testToken(){
+  const token=getToken();
+  if(!token) return alert('حط التوكن الاول');
+  try{
+    const r=await fetch(`https://api.github.com/repos/${OWNER}/${REPO}`,{headers:{Authorization:`Bearer ${token}`}});
+    document.getElementById('tokenStatus').innerText=r.ok?'التوكن شغال ✓':'التوكن بايظ ❌';
+  }catch(e){ document.getElementById('tokenStatus').innerText='فشل الاتصال'; }
+}
+
+async function loadRiders(){
+  let riders=[];
+  try{
+    const res=await fetch(`https://raw.githubusercontent.com/${OWNER}/${REPO}/main/${FILE_PATH}?t=${Date.now()}`);
+    if(res.ok){
+      riders=await res.json();
+      document.getElementById('srcLabel').innerText='( riders.json )';
+    }
+  }catch(e){}
+
+  if(!Array.isArray(riders)) riders=[];
+  document.getElementById('totalRiders').innerText=riders.length;
+  let totalBal=0, totalDel=0;
+  riders.forEach(r=>{ totalBal+=parseFloat(r.balance||0); totalDel+=(parseInt(r.delivered||0)+parseInt(r.cancelled||0)); });
+  document.getElementById('totalBalance').innerText=totalBal;
+  document.getElementById('totalOrders').innerText=totalDel;
+
+  const list=document.getElementById('ridersList');
+  if(riders.length===0){
+    list.innerHTML='مفيش مناديب - ضيف من riders.json';
+    document.getElementById('srcLabel').innerText='(localStorage)';
+  }else{
+    list.innerHTML=riders.map(r=>`
+      <div style="display:flex;justify-content:space-between;padding:10px;border-bottom:1px solid #f0f0f0;cursor:pointer" onclick="location.href='rider.html?phone=${r.phone}'">
+        <span>👤 ${r.name||'مندوب'} - ${r.phone}</span>
+        <span>${r.balance||0}ج | ✅${r.delivered||0} ❌${r.cancelled||0}</span>
+      </div>
+    `).join('');
+  }
+}
+document.getElementById('searchInput').addEventListener('input', function(){
+  const q=this.value.toLowerCase();
+  document.querySelectorAll('#ridersList div').forEach(d=>{ d.style.display=d.innerText.toLowerCase().includes(q)?'flex':'none'; });
+});
+loadRiders();
+</script>
+</body>
+  </html>
