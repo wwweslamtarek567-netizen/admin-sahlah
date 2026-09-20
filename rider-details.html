@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بيانات المندوب</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="config.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:'Cairo',sans-serif;background:#f8f8f8;padding-bottom:20px}
+.header{background:#ff6a00;color:white;padding:12px 15px;display:flex;justify-content:space-between;align-items:center}
+.top-card{background:#fef6ef;margin:15px;border-radius:20px;padding:15px;display:flex;gap:15px;align-items:center}
+.top-card img{width:95px;height:95px;border-radius:50%;border:3px solid #ff6a00}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-weight:700;font-size:13px}
+.b-ok{background:#e8f5e9;color:#1b5e20}.b-off{background:#ffebee;color:#b71c1c}.b-road{background:#fff3e0;color:#e65100}.b-block{background:#000;color:white}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 15px}
+.s{border-radius:14px;padding:10px;text-align:center}.s b{display:block;font-size:20px}
+.s1{background:#e8f5e9}.s2{background:#e3f2fd}.s3{background:#fde8e8}.s4{background:#f3e5f5}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:15px}
+.act{border:none;border-radius:12px;padding:12px;font-family:'Cairo';font-weight:800;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.act-green{background:#00a651}.act-red{background:#ff3b30}.act-orange{background:#ff9f0a}
+.info-box{background:white;margin:15px;border-radius:20px;padding:15px}
+.row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0f0}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:999;padding:15px}
+.modal-box{background:white;width:100%;max-width:380px;border-radius:20px;padding:20px}
+.modal-box input{width:100%;padding:12px;margin:8px 0;border-radius:12px;border:1.5px solid #ddd;font-family:'Cairo'}
+.btn{width:100%;padding:12px;border:none;border-radius:12px;font-family:'Cairo';font-weight:800;color:white;cursor:pointer;margin-top:8px}
+.back-btn{background:#ff6a00;color:white;border:none;width:calc(100% - 30px);margin:15px;padding:14px;border-radius:14px;font-family:'Cairo';font-weight:800;font-size:16px;display:flex;justify-content:center;align-items:center;gap:8px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <i class="fa-solid fa-chevron-left" style="font-size:22px;cursor:pointer" onclick="history.back()"></i>
+  <div style="font-size:22px;font-weight:800">بيانات المندوب</div>
+  <div style="width:30px"></div>
+</div>
+
+<div class="top-card">
+  <img id="rImg" src="">
+  <div style="flex:1">
+    <h2 id="rName" style="margin:0">...</h2>
+    <div><i class="fa-solid fa-phone"></i> <span id="rPhone" style="direction:ltr">--</span></div>
+  </div>
+  <div id="rStatusBadge" class="badge b-ok">--</div>
+</div>
+
+<div class="stats">
+  <div class="s s1"><i class="fa-solid fa-wallet" style="color:#00a651"></i><b id="sBalance">--</b><small>جنيه<br>رصيد</small></div>
+  <div class="s s2"><i class="fa-solid fa-clipboard-check" style="color:#007aff"></i><b id="sDelivered">0</b><small>الطلبات المستلمه</small></div>
+  <div class="s s3"><i class="fa-solid fa-xmark" style="color:#ff3b30"></i><b id="sCancelled">0</b><small>الطلبات الملغاه</small></div>
+  <div class="s s4"><i class="fa-solid fa-star" style="color:#ff6a00"></i><b>3.5</b><small>تقييم</small></div>
+</div>
+
+<div class="actions">
+  <button class="act act-green" onclick="openCharge('add')"><i class="fa-solid fa-plus"></i> إضافة رصيد</button>
+  <button class="act act-red" onclick="openCharge('deduct')"><i class="fa-solid fa-minus"></i> خصم رصيد</button>
+  <button class="act" style="background:#000" onclick="deleteRider()"><i class="fa-solid fa-trash"></i> حذف المندوب</button>
+  <button class="act act-orange" onclick="updateStatus('موقوف')"><i class="fa-solid fa-pause"></i> إيقاف</button>
+</div>
+
+<div class="info-box">
+  <div class="row"><span>الاسم</span><b id="dName">--</b></div>
+  <div class="row"><span>رقم الهاتف</span><b id="dPhone" style="direction:ltr">--</b></div>
+  <div class="row"><span>الرصيد</span><b id="dBal">--</b></div>
+  <div class="row"><span>الطلبات المستلمه</span><b id="dDelivered" style="color:#00a651">0</b></div>
+  <div class="row"><span>الطلبات الملغاه</span><b id="dCancelled" style="color:#ff3b30">0</b></div>
+</div>
+
+<button class="back-btn" onclick="window.location='index.html'"><i class="fa-solid fa-arrow-left"></i> العودة للقائمة</button>
+
+<div class="modal" id="chargeModal">
+  <div class="modal-box">
+    <h3 id="chargeTitle">إضافة رصيد للمندوب</h3>
+    <input type="number" id="chargeAmount" placeholder="مثلا 100">
+    <button class="btn" id="chargeBtn" style="background:#00a651" onclick="doCharge()">تنفيذ</button>
+    <button class="btn" style="background:#aaa" onclick="document.getElementById('chargeModal').style.display='none'">إلغاء</button>
+    <div id="saveStatus" style="font-size:12px;margin-top:8px;text-align:center"></div>
+  </div>
+</div>
+
+<script>
+const phone = new URLSearchParams(window.location.search).get('phone');
+let currentRider=null;
+let chargeType='add';
+let riderKey = null;
+
+function clean(p){ return String(p||'').replace(/\D/g,''); }
+
+async function load(){
+  if(!phone){ alert('مفيش رقم تليفون'); return; }
+  try{
+    const res = await fetch(DB_URL + '/riders.json?t=' + Date.now());
+    const data = await res.json();
+    if(!data){ alert('المندوب مش موجود'); return; }
+
+    let ridersArray = [];
+    if(Array.isArray(data)){
+      ridersArray = data.map((r,i)=> ({...r, _key:i})).filter(Boolean);
+    } else {
+      ridersArray = Object.entries(data).map(([k,v])=> ({...v, _key:k}));
+    }
+
+    const cleanPhone = clean(phone);
+    let found = ridersArray.find(r=>{
+      const rp = clean(r.phone||'');
+      const rk = clean(r._key||'');
+      return rp === cleanPhone || rk === cleanPhone;
+    });
+
+    if(!found){
+      alert('المندوب مش موجود');
+      return;
+    }
+    riderKey = found._key;
+
+    currentRider = {
+      phone: String(found.phone||phone),
+      name: found.name||'مندوب',
+      balance: parseFloat(found.balance)||0,
+      status: found.status||'متاح',
+      delivered: parseInt(found.orders ?? found.delivered ?? 0),
+      cancelled: parseInt(found.cancelled ?? 0)
+    };
+    render();
+  }catch(e){
+    alert('فشل الاتصال بالسيرفر: '+e.message);
+  }
+}
+
+function render(){
+  document.getElementById('rPhone').innerText=currentRider.phone;
+  document.getElementById('dPhone').innerText=currentRider.phone;
+  document.getElementById('rName').innerText=currentRider.name;
+  document.getElementById('dName').innerText=currentRider.name;
+  document.getElementById('sBalance').innerText=currentRider.balance;
+  document.getElementById('sDelivered').innerText=currentRider.delivered || 0;
+  document.getElementById('sCancelled').innerText=currentRider.cancelled || 0;
+  document.getElementById('dBal').innerText=currentRider.balance+' جنيه';
+  document.getElementById('dDelivered').innerText=currentRider.delivered || 0;
+  document.getElementById('dCancelled').innerText=currentRider.cancelled || 0;
+  document.getElementById('rImg').src=`https://ui-avatars.com/api/?name=${encodeURIComponent(currentRider.name)}&background=ff6a00&color=fff&size=128`;
+  const badge=document.getElementById('rStatusBadge');
+  badge.innerText=currentRider.status;
+  badge.className='badge '+(currentRider.status=='متاح'?'b-ok':currentRider.status=='في الطريق'?'b-road':currentRider.status=='محظور'?'b-block':'b-off');
+}
+
+async function saveToFirebase(){
+  document.getElementById('saveStatus').innerText='جاري الحفظ...';
+  try{
+    const url = DB_URL + '/riders/' + riderKey + '.json';
+    // نحفظ نفس البيانات + نحدث balance
+    const resGet = await fetch(url);
+    let old = await resGet.json() || {};
+    old.balance = currentRider.balance;
+    old.status = currentRider.status;
+    old.orders = currentRider.delivered;
+    old.delivered = currentRider.delivered;
+    old.cancelled = currentRider.cancelled;
+    
+    const res = await fetch(url, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(old) });
+    if(!res.ok) throw new Error('save failed');
+    document.getElementById('saveStatus').innerText='تم الحفظ في السيرفر ✓';
+    render();
+    setTimeout(()=>{ document.getElementById('chargeModal').style.display='none'; document.getElementById('saveStatus').innerText=''; },800);
+  }catch(e){
+    document.getElementById('saveStatus').innerText='فشل الحفظ ❌ '+e.message;
+  }
+}
+
+function openCharge(type){
+  chargeType=type;
+  document.getElementById('chargeTitle').innerText = type=='add'? 'إضافة رصيد للمندوب' : 'خصم رصيد من المندوب';
+  document.getElementById('chargeBtn').innerText = type=='add'? 'شحن الآن' : 'خصم الآن';
+  document.getElementById('chargeBtn').style.background = type=='add'? '#00a651' : '#ff3b30';
+  document.getElementById('chargeModal').style.display='flex';
+}
+function doCharge(){
+  let amt=parseFloat(document.getElementById('chargeAmount').value||0);
+  if(!amt) return alert('اكتب المبلغ');
+  if(chargeType=='add') currentRider.balance+=amt;
+  else { currentRider.balance-=amt; if(currentRider.balance<0) currentRider.balance=0; }
+  document.getElementById('chargeAmount').value='';
+  saveToFirebase();
+}
+function updateStatus(newStatus){
+  if(!confirm('تغير الحالة لـ '+newStatus+' ؟')) return;
+  currentRider.status=newStatus;
+  saveToFirebase();
+}
+
+// دي الجديدة - حذف نهائي
+async function deleteRider(){
+  if(!riderKey) return;
+  if(!confirm('متأكد عايز تحذف المندوب '+currentRider.name+' نهائي ؟\nهيتمسح من عندك ومن عند المندوب ويرجع لصفحة التسجيل')) return;
+  
+  try{
+    const res = await fetch(DB_URL + '/riders/' + riderKey + '.json', { method:'DELETE' });
+    if(!res.ok) throw new Error('فشل الحذف');
+    alert('تم حذف المندوب ✓');
+    window.location.href = 'index.html';
+  }catch(e){
+    alert('فشل الحذف: '+e.message);
+  }
+}
+
+load();
+</script>
+</body>
+  </html>
