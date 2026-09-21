@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>طلبات الشحن - سهلة</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
+<script>
+// نفس رابط الفايربيز بتاعك
+const DB_URL = "https://sahlah-c6152-default-rtdb.firebaseio.com";
+</script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f4f4;font-family:'Cairo',sans-serif;padding:12px}
+h2{margin:10px 6px 16px;font-weight:800}
+.card{background:#fff;border-radius:18px;padding:14px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.top{display:flex;justify-content:space-between;align-items:center}
+.name{font-weight:800;font-size:16px;display:flex;align-items:center;gap:6px}
+.amount{color:#ff6a00;font-weight:800;font-size:20px}
+.phone{color:#555;font-size:13px;direction:ltr;text-align:right;margin-top:2px}
+.date{color:#999;font-size:11px;margin:8px 0;display:flex;align-items:center;gap:4px}
+.badge{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block}
+.badge.wait{background:#fff3e0;color:#e65100}
+.badge.ok{background:#e8f5e9;color:#2e7d32}
+.badge.no{background:#fce4ec;color:#c62828}
+.card img{width:100%;border-radius:12px;margin-top:10px;border:1px solid #eee;max-height:450px;object-fit:contain;cursor:pointer}
+.no-img{background:#f9f9f9;color:#aaa;text-align:center;padding:20px;border-radius:12px;margin-top:10px;font-size:13px;border:1px dashed #ddd}
+.btns{display:flex;gap:10px;margin-top:14px}
+.btns button{flex:1;padding:13px;border:none;border-radius:12px;font-family:'Cairo';font-weight:800;cursor:pointer;font-size:14px}
+.btn-ok{background:#00a651;color:#fff;flex:2}
+.btn-no{background:#eeeeee;color:#333}
+</style>
+</head>
+<body>
+
+<h2>طلبات الشحن <span id="count" style="font-size:12px;color:#888;font-weight:400"></span></h2>
+<div id="list">⏳ تحميل طلبات الشحن...</div>
+
+<script>
+let ridersCache = null;
+
+async function getRiders(){
+  if(ridersCache) return ridersCache;
+  try{
+    let res = await fetch(DB_URL + '/riders.json?t=' + Date.now());
+    ridersCache = await res.json();
+  }catch(e){ ridersCache = null; }
+  return ridersCache;
+}
+
+async function load(){
+  const listEl = document.getElementById('list');
+  try{
+    let res = await fetch(DB_URL + '/recharge_requests.json?t=' + Date.now());
+    let data = await res.json();
+    let riders = await getRiders();
+
+    if(!data){
+      listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#888">مفيش طلبات حاليا</div>';
+      document.getElementById('count').innerText = '';
+      return;
+    }
+
+    let keys = Object.keys(data).reverse();
+    let pendingCount = 0;
+    let html = '';
+
+    for(let key of keys){
+      let x = data[key];
+      if(!x) continue;
+      if(x.status === 'approved') continue;
+      if(x.status === 'rejected') continue;
+      pendingCount++;
+
+      let phone = x.phone || x.riderPhone || "";
+      let amount = x.amount || 0;
+      let dateStr = x.dateStr || (x.timestamp? new Date(x.timestamp).toLocaleString('ar-EG') : key);
+      let screenshot = x.screenshot || x.image || "";
+      let status = x.status || 'pending';
+
+      // اهم حتة: هات الاسم الحقيقي من جدول المناديب
+      let realName = x.riderName || x.name || "";
+
+      if(riders){
+        try{
+          if(Array.isArray(riders)){
+            let found = riders.find(r => String(r.phone || "").trim() === String(phone).trim());
+            if(found && found.name) realName = found.name;
+          }else{
+            for(let rk in riders){
+              let r = riders[rk];
+              if(String(r.phone || rk).trim() === String(phone).trim()){
+                if(r.name) realName = r.name;
+                break;
+              }
+            }
+          }
+        }catch(e){}
+      }
+
+      if(!realName) realName = phone? phone : "غير معروف";
+
+      let statusText = status==='pending'? 'منتظر تأكيد' : status;
+      let badgeClass = 'wait';
+      if(status==='approved') badgeClass='ok';
+      if(status==='rejected') badgeClass='no';
+
+      html += `
+      <div class="card">
+        <div class="top">
+          <div>
+            <div class="name">👤 ${realName}</div>
+            <div class="phone">${phone}</div>
+          </div>
+          <div class="amount">${amount} جنيه</div>
+        </div>
+        <div class="date">🕒 ${dateStr} - ${key.substring(0,6)}</div>
+        <div><span class="badge ${badgeClass}">${statusText}</span></div>
+
+        ${screenshot?
+          `<img src="${screenshot}" onclick="window.open(this.src,'_blank')" title="دوس للتكبير">` :
+          `<div class="no-img">مفيش صورة مرفقة</div>`
+        }
+
+        <div class="btns">
+          <button class="btn-no" onclick="rejectReq('${key}')">✕ رفض</button>
+          <button class="btn-ok" onclick="approveReq('${key}','${phone}',${amount})">✓ تأكيد واضافة<br>الرصيد</button>
+        </div>
+      </div>`;
+    }
+
+    document.getElementById('count').innerText = `(${pendingCount} معلق)`;
+    listEl.innerHTML = html || '<div style="text-align:center;padding:40px;color:#888">مفيش طلبات معلقة ✓</div>';
+
+  }catch(err){
+    listEl.innerHTML = `<div style="color:red;padding:20px">خطأ في التحميل: ${err.message}<br>اتأكد من النت</div>`;
+  }
+}
+
+async function approveReq(key, phone, amount){
+  if(!confirm(`متأكد عايز تضيف ${amount} جنيه للرقم ${phone} ؟`)) return;
+
+  let riders = await getRiders();
+  if(!riders) return alert('مش قادر اوصل لجدول المناديب');
+
+  let riderKey = null;
+  let currentBalance = 0;
+  let riderName = "";
+
+  if(Array.isArray(riders)){
+    let idx = riders.findIndex(r => String(r.phone||"").trim() === String(phone).trim());
+    if(idx >= 0){ riderKey = idx; currentBalance = parseFloat(riders[idx].balance) || 0; riderName = riders[idx].name || ""; }
+  }else{
+    for(let k in riders){
+      if(String(riders[k].phone || k).trim() === String(phone).trim()){
+        riderKey = k; currentBalance = parseFloat(riders[k].balance) || 0; riderName = riders[k].name || ""; break;
+      }
+    }
+  }
+
+  if(riderKey === null){
+    return alert('مش لاقي مندوب برقم: ' + phone + '\nاتأكد ان الرقم اللي كتبه في صفحة الدفع هو نفس رقم التسجيل');
+  }
+
+  let newBalance = currentBalance + parseFloat(amount);
+
+  // 1- حدث الرصيد
+  let res1 = await fetch(`${DB_URL}/riders/${riderKey}/balance.json`,{
+    method:'PUT',
+    body: JSON.stringify(newBalance)
+  });
+
+  if(!res1.ok) return alert('فشل تحديث الرصيد');
+
+  // 2- علم الطلب انه اتقبل
+  await fetch(`${DB_URL}/recharge_requests/${key}/status.json`,{
+    method:'PUT',
+    body: JSON.stringify('approved')
+  });
+  await fetch(`${DB_URL}/recharge_requests/${key}/approvedAt.json`,{
+    method:'PUT',
+    body: JSON.stringify(Date.now())
+  });
+
+  alert(`تم ✅\nالمندوب: ${riderName}\nالرصيد القديم: ${currentBalance}\nالرصيد الجديد: ${newBalance}`);
+  ridersCache = null;
+  load();
+}
+
+async function rejectReq(key){
+  if(!confirm('متأكد عايز ترفض الطلب ده؟')) return;
+  await fetch(`${DB_URL}/recharge_requests/${key}/status.json`,{
+    method:'PUT',
+    body: JSON.stringify('rejected')
+  });
+  load();
+}
+
+load();
+setInterval(load, 7000);
+</script>
+</body>
+  </html>
