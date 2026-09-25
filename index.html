@@ -335,7 +335,7 @@ function renderClients(){
     return;
   }
   document.getElementById('clientsList').innerHTML = filtered.map(c=>`
-    <div class="rider-row">
+    <div class="rider-row" onclick="location.href='client-details.html?phone=${c.phone}'">
       <div style="display:flex;align-items:center;gap:12px">
         <i class="fa-solid fa-user" style="color:#007aff"></i>
       </div>
