@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بيانات العميل - سهلة</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="config.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:'Cairo',sans-serif;background:#f8f8f8;padding-bottom:20px}
+.header{background:#007aff;color:white;padding:15px 20px;border-bottom-left-radius:25px;border-bottom-right-radius:25px;display:flex;align-items:center;gap:15px}
+.back{width:40px;height:40px;background:rgba(255,255,255,.2);border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:15px}
+.btn{border-radius:18px;padding:18px;text-align:center;cursor:pointer;border:none;font-family:'Cairo';font-weight:800;transition:.1s}
+.btn:active{transform:scale(.95)}
+.btn i{font-size:28px;display:block;margin-bottom:6px}
+.btn-green{background:#e8f5e9;color:#1b5e20}
+.btn-red{background:#ffebee;color:#c62828}
+.btn-orange{background:#fff3e0;color:#e65100}
+.btn-blue{background:#e3f2fd;color:#0d47a1}
+.box{background:white;margin:0 15px;border-radius:20px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0f0f0}
+.row:last-child{border:none}
+.lbl{color:#888;font-size:13px}
+.val{font-weight:800;font-size:15px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="back" onclick="history.back()"><i class="fa-solid fa-arrow-right"></i></div>
+  <div>
+    <div style="font-size:20px;font-weight:800">بيانات العميل</div>
+    <div id="phoneHead" style="font-size:13px;opacity:.8;direction:ltr">...</div>
+  </div>
+</div>
+
+<div class="btns">
+  <div class="btn btn-green" onclick="showOrders('delivered')"><i class="fa-solid fa-check-circle"></i><div id="deliveredCount">0</div><small>الطلبات المستلمة</small></div>
+  <div class="btn btn-red" onclick="showOrders('cancelled')"><i class="fa-solid fa-xmark-circle"></i><div id="cancelledCount">0</div><small>الطلبات الملغاة</small></div>
+  <div class="btn btn-blue" onclick="copyAddress()"><i class="fa-solid fa-location-dot"></i><div>العنوان</div><small id="addressShort">...</small></div>
+  <div class="btn btn-orange" onclick="deleteClient()"><i class="fa-solid fa-trash"></i><div>حذف العميل</div><small>حذف نهائي</small></div>
+</div>
+
+<div class="box">
+  <h3 style="margin:0 0 10px 0"><i class="fa-solid fa-user" style="color:#007aff"></i> بيانات العميل</h3>
+  <div class="row"><span class="lbl">الاسم</span><span class="val" id="cName">...</span></div>
+  <div class="row"><span class="lbl">رقم الهاتف</span><span class="val" id="cPhone" style="direction:ltr">...</span></div>
+  <div class="row"><span class="lbl">العنوان</span><span class="val" id="cAddress">...</span></div>
+  <div class="row"><span class="lbl">تاريخ التسجيل</span><span class="val" id="cDate">...</span></div>
+</div>
+
+<div class="box" style="margin-top:15px" id="ordersBox" >
+  <h3 style="margin:0 0 10px 0"><i class="fa-solid fa-box"></i> الطلبات</h3>
+  <div id="ordersList" style="color:#888;text-align:center;padding:20px">اختر نوع الطلبات من فوق</div>
+</div>
+
+<script>
+let clientPhone = new URLSearchParams(location.search).get('phone');
+let clientData = null;
+let allOrders = [];
+
+document.getElementById('phoneHead').innerText = clientPhone;
+
+async function loadClient(){
+  if(!clientPhone){ alert('مفيش رقم عميل'); return; }
+  try{
+    // جلب بيانات العميل
+    let res = await fetch(DB_URL + '/clients/'+clientPhone+'.json?t='+Date.now());
+    let data = await res.json();
+    if(!data){
+      let res2 = await fetch(DB_URL + '/clients.json?t='+Date.now());
+      let all = await res2.json();
+      if(all){
+        if(Array.isArray(all)){
+          data = all.find(c=> String(c.phone)==String(clientPhone));
+        }else{
+          data = Object.values(all).find(c=> String(c.phone)==String(clientPhone)) || all[clientPhone];
+        }
+      }
+    }
+    clientData = data || {};
+    document.getElementById('cName').innerText = clientData.name || 'عميل';
+    document.getElementById('cPhone').innerText = clientData.phone || clientPhone;
+    document.getElementById('cAddress').innerText = clientData.address || 'مفيش عنوان';
+    document.getElementById('addressShort').innerText = (clientData.address||'...').substring(0,20);
+    document.getElementById('cDate').innerText = clientData.createdAt? new Date(clientData.createdAt).toLocaleDateString('ar-EG') : '...';
+
+    // جلب الطلبات
+    let resO = await fetch(DB_URL + '/orders.json?t='+Date.now());
+    let orders = await resO.json();
+    if(orders){
+      let list = Array.isArray(orders)? orders : Object.values(orders);
+      allOrders = list.filter(o=> String(o.clientPhone)==String(clientPhone) || String(o.phone)==String(clientPhone) );
+      let delivered = allOrders.filter(o=> o.status=='delivered' || o.status=='تم التوصيل').length;
+      let cancelled = allOrders.filter(o=> o.status=='cancelled' || o.status=='ملغي').length;
+      document.getElementById('deliveredCount').innerText = delivered;
+      document.getElementById('cancelledCount').innerText = cancelled;
+    }
+  }catch(e){ console.error(e); }
+}
+
+function showOrders(type){
+  let filtered = [];
+  if(type=='delivered') filtered = allOrders.filter(o=> o.status=='delivered' || o.status=='تم التوصيل' || o.status=='completed');
+  if(type=='cancelled') filtered = allOrders.filter(o=> o.status=='cancelled' || o.status=='ملغي');
+
+  if(filtered.length==0){
+    document.getElementById('ordersList').innerHTML = '<div style="padding:20px;color:#888">مفيش طلبات '+ (type=='delivered'?'مستلمة':'ملغاة') +'</div>';
+    return;
+  }
+  document.getElementById('ordersList').innerHTML = filtered.map(o=>`
+    <div style="border:1px solid #eee;border-radius:12px;padding:10px;margin-bottom:8px;text-align:right">
+      <b>#${o.id||''}</b> - ${o.status||''}<br>
+      <small style="color:#888">${o.address||''} - ${o.date||''}</small>
+    </div>
+  `).join('');
+}
+
+function copyAddress(){
+  let addr = document.getElementById('cAddress').innerText;
+  navigator.clipboard.writeText(addr);
+  alert('تم نسخ العنوان: '+addr);
+}
+
+async function deleteClient(){
+  if(!confirm('متأكد عايز تحذف العميل '+clientPhone+' نهائي؟')) return;
+  try{
+    await fetch(DB_URL + '/clients/'+clientPhone+'.json',{method:'DELETE'});
+    // لو متسجل برقم تاني
+    let res = await fetch(DB_URL + '/clients.json');
+    let all = await res.json();
+    if(all &&!Array.isArray(all)){
+      for(let k in all){
+        if(String(all[k].phone)==String(clientPhone) || k==clientPhone){
+          await fetch(DB_URL + '/clients/'+k+'.json',{method:'DELETE'});
+        }
+      }
+    }
+    alert('تم الحذف');
+    location.href='index.html';
+  }catch(e){ alert('فشل الحذف '+e.message); }
+}
+
+loadClient();
+</script>
+</body>
+  </html>
