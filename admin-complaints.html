@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شكاوى العملاء - ادمن</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+*{box-sizing:border-box;font-family:'Cairo',sans-serif}
+body{margin:0;background:#f5f5f5;height:100vh;display:flex;flex-direction:column}
+.header{background:#7c3aed;color:white;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+.list{flex:1;overflow:auto;padding:10px}
+.item{background:white;border-radius:14px;padding:12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.05);border-right:4px solid #7c3aed}
+.item.unread{border-right-color:red;background:#fff6f6}
+.badge{background:red;color:white;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:900}
+.chatView{display:none;flex-direction:column;height:100vh;position:fixed;inset:0;background:#ece5dd;z-index:10}
+.chatTop{background:#7c3aed;color:white;padding:12px;display:flex;align-items:center;gap:10px}
+.msgs{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.msg{max-width:75%;padding:8px 12px;border-radius:12px;font-size:13px;font-weight:700}
+.msg.client{align-self:flex-start;background:white}
+.msg.admin{align-self:flex-end;background:#d9c5ff}
+.inputArea{background:white;padding:8px;display:flex;gap:8px}
+.inputArea input{flex:1;border:none;background:#f0f0f0;border-radius:25px;padding:11px 14px;outline:none;font-weight:700}
+.inputArea button{background:#7c3aed;color:white;border:none;width:44px;height:44px;border-radius:50%;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div id="listView" style="display:flex;flex-direction:column;height:100vh">
+  <div class="header">
+    <div onclick="history.back()" style="cursor:pointer"><i class="fa-solid fa-arrow-right"></i> رجوع</div>
+    <div style="font-weight:900">💬 شكاوى واقتراحات العملاء</div>
+    <div style="width:40px"></div>
+  </div>
+  <div id="list" class="list"><div style="text-align:center;padding:40px;color:#888;font-weight:800">جاري التحميل...</div></div>
+</div>
+
+<div id="chatView" class="chatView">
+  <div class="chatTop">
+    <div onclick="closeChat()" style="cursor:pointer"><i class="fa-solid fa-arrow-right"></i></div>
+    <div><div id="chatName" style="font-weight:900"></div><div id="chatPhone" style="font-size:11px;opacity:.8"></div></div>
+    <div style="margin-right:auto;display:flex;gap:10px">
+      <button onclick="deleteChat()" style="background:rgba(0,0,0,.2);border:none;color:white;padding:6px 10px;border-radius:10px;cursor:pointer"><i class="fa-solid fa-trash"></i></button>
+    </div>
+  </div>
+  <div id="msgs" class="msgs"></div>
+  <div class="inputArea">
+    <input id="replyTxt" placeholder="اكتب ردك هنا..." onkeypress="if(event.key==='Enter')reply()">
+    <button onclick="reply()"><i class="fa-solid fa-paper-plane"></i></button>
+  </div>
+</div>
+
+<script>
+let currentPhone=null;
+const BASE = DB_URL + '/support';
+
+async function loadList(){
+  try{
+    const res = await fetch(BASE + '.json?t='+Date.now());
+    const data = await res.json();
+    const list = document.getElementById('list');
+    if(!data){ list.innerHTML='<div style="text-align:center;padding:50px;color:#888">مفيش شكاوى حاليا</div>'; return; }
+    const chats = Object.entries(data).map(([phone,v])=>({phone, info:v.info||{}, messages:v.messages})).filter(c=>c.info.lastMessage).sort((a,b)=>(b.info.updatedAt||0)-(a.info.updatedAt||0));
+    list.innerHTML='';
+    chats.forEach(c=>{
+      const time = c.info.updatedAt ? new Date(c.info.updatedAt).toLocaleString('ar-EG') : '';
+      const unread = c.info.unreadAdmin||0;
+      const div=document.createElement('div');
+      div.className='item '+(unread>0?'unread':'');
+      div.onclick=()=>openChat(c.phone,c.info.name);
+      div.innerHTML=`<div style="display:flex;align-items:center;gap:10px"><div style="background:#f3e8ff;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;color:#7c3aed">${(c.info.name||'C')[0]}</div><div><div style="font-weight:900;font-size:14px">${c.info.name} - ${c.phone}</div><div style="font-size:12px;color:#666;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.info.lastMessage}</div><div style="font-size:10px;color:#aaa">${time}</div></div></div><div>${unread>0?`<span class="badge">${unread} جديد</span>`:''}<i class="fa-solid fa-chevron-left" style="color:#ccc;margin-right:8px"></i></div>`;
+      list.appendChild(div);
+    });
+  }catch(e){ document.getElementById('list').innerHTML='خطأ في التحميل'; }
+}
+
+async function openChat(phone,name){
+  currentPhone=phone;
+  document.getElementById('chatName').innerText=name||'عميل';
+  document.getElementById('chatPhone').innerText=phone;
+  document.getElementById('listView').style.display='none';
+  document.getElementById('chatView').style.display='flex';
+  await loadChat();
+  setInterval(loadChat,2500);
+  // صفر عداد الادمن
+  await fetch(`${BASE}/${phone}/info.json`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({unreadAdmin:0})});
+}
+
+function closeChat(){ document.getElementById('chatView').style.display='none'; document.getElementById('listView').style.display='flex'; currentPhone=null; loadList(); }
+
+async function loadChat(){
+  if(!currentPhone) return;
+  try{
+    const res=await fetch(`${BASE}/${currentPhone}/messages.json?t=`+Date.now());
+    const data=await res.json();
+    const box=document.getElementById('msgs');
+    if(!data) return;
+    const msgs=Object.values(data).sort((a,b)=>a.timestamp-b.timestamp);
+    box.innerHTML='';
+    msgs.forEach(m=>{
+      const d=document.createElement('div');
+      d.className='msg '+(m.sender==='client'?'client':'admin');
+      const time=new Date(m.timestamp).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
+      d.innerHTML=`${m.text}<div style="font-size:10px;color:#777;margin-top:4px">${time}</div>`;
+      box.appendChild(d);
+    });
+    box.scrollTop=box.scrollHeight;
+  }catch{}
+}
+
+async function reply(){
+  const input=document.getElementById('replyTxt');
+  const text=input.value.trim();
+  if(!text||!currentPhone) return;
+  const msg={sender:'admin',text:text,timestamp:Date.now()};
+  await fetch(`${BASE}/${currentPhone}/messages.json`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(msg)});
+  await fetch(`${BASE}/${currentPhone}/info.json`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({lastMessage:'الادمن: '+text,updatedAt:Date.now(),unreadClient:1})});
+  input.value='';
+  loadChat();
+}
+
+async function deleteChat(){
+  if(!currentPhone) return;
+  if(!confirm('متأكد تحذف المحادثة دي نهائي؟')) return;
+  await fetch(`${BASE}/${currentPhone}.json`,{method:'DELETE'});
+  closeChat();
+}
+
+loadList();
+setInterval(loadList,5000);
+</script>
+</body>
+  </html>
